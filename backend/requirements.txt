@@ -1,0 +1,9 @@
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+pydantic==2.10.3
+pydantic-settings==2.6.1
+python-dotenv==1.0.1
+# joblib==1.4.2       # Uncomment when integrating the Random Forest model
+# scikit-learn==1.5.2 # Uncomment when integrating the Random Forest model
+# numpy==1.26.4       # Uncomment when integrating the Random Forest model
+# shap==0.46.0        # Uncomment when integrating SHAP explanations
