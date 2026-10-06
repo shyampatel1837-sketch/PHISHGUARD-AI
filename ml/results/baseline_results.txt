@@ -1,0 +1,23 @@
+PhishGuard AI - Random Forest Baseline
+
+Dataset:
+507,192 cleaned URLs
+
+Features:
+12 URL-based features
+
+Model:
+RandomForestClassifier
+n_estimators=200
+class_weight=balanced
+random_state=42
+
+Results:
+Accuracy : 0.7949
+Precision: 0.5369
+Recall   : 0.6545
+F1 Score : 0.5899
+
+Confusion Matrix:
+[[65676, 12904],
+ [ 7898, 14961]]

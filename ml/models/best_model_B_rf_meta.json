@@ -1,0 +1,70 @@
+{
+  "model_type": "31-feat RF",
+  "feature_count": 31,
+  "feature_names": [
+    "url_length",
+    "domain_length",
+    "has_https",
+    "has_ip_address",
+    "has_at_symbol",
+    "hyphen_count",
+    "dot_count",
+    "subdomain_count",
+    "path_length",
+    "query_params",
+    "special_char_count",
+    "has_suspicious_keywords",
+    "digit_count",
+    "letter_count",
+    "digit_letter_ratio",
+    "url_entropy",
+    "domain_entropy",
+    "path_depth",
+    "query_length",
+    "double_slash_count",
+    "percent_encoding_count",
+    "has_suspicious_tld",
+    "domain_has_digits",
+    "longest_domain_label",
+    "subdomain_is_www",
+    "non_www_subdomain_depth",
+    "reg_domain_length",
+    "hostname_label_count",
+    "digit_ratio_hostname",
+    "path_domain_count",
+    "vowel_ratio_reg_domain"
+  ],
+  "threshold": 0.49258576365282974,
+  "domain_aware_metrics": {
+    "acc": 0.9066654042794925,
+    "prec": 0.8181979111347141,
+    "rec": 0.7627692053799818,
+    "f1": 0.7895118930691378,
+    "cm": [
+      [
+        77274,
+        4108
+      ],
+      [
+        5750,
+        18488
+      ]
+    ]
+  },
+  "random_split_metrics": {
+    "acc": 0.9387594148034228,
+    "prec": 0.9108949992595152,
+    "rec": 0.8072094142350934,
+    "f1": 0.8559235550607663,
+    "cm": [
+      [
+        76772,
+        1805
+      ],
+      [
+        4407,
+        18452
+      ]
+    ]
+  }
+}

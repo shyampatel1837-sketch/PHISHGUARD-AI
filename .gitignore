@@ -22,11 +22,14 @@ ENV/
 .env
 !.env.example
 
-# ML model artifacts (potentially large — commit separately or use Git LFS)
+# ML model artifacts
 backend/model/*.pkl
 backend/model/*.joblib
 backend/model/*.h5
 backend/model/*.pt
+
+# Allow the production model tracked with Git LFS
+!backend/model/phishing_model.pkl
 
 # ── Node / Frontend ───────────────────────────────────────────────────────────
 node_modules/
