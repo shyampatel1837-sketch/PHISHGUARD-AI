@@ -15,7 +15,7 @@ from urllib.parse import urlparse
 from typing import Tuple
 
 from app.schemas.url_schemas import AnalyzeURLResponse, URLFeatures, ModelInfo
-from app.services import feature_service, ml_service
+from app.services import feature_service, ml_service, feedback_service
 
 logger = logging.getLogger(__name__)
 
@@ -117,6 +117,15 @@ def analyze_url(raw_url: str) -> AnalyzeURLResponse:
         status = "analyzed"
         message = "Analysis complete."
 
+    scan_record = feedback_service.record_scan(
+        url=url,
+        classification=classification,
+        risk_score=risk_score,
+        confidence=confidence,
+        model_version=ml_service.get_model_info().version,
+        status=status,
+    )
+
     return AnalyzeURLResponse(
         success=True,
         url=url,
@@ -127,6 +136,7 @@ def analyze_url(raw_url: str) -> AnalyzeURLResponse:
         features=features,
         explanations=[],       # Populated once SHAP is integrated
         model=ml_service.get_model_info(),
+        scan_id=scan_record["scan_id"],
         analyzed_at=datetime.now(timezone.utc),
         message=message,
     )

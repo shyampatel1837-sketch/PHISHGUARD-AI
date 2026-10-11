@@ -18,10 +18,15 @@ class Settings(BaseSettings):
         "http://localhost:5173",
         "http://localhost:3000",
         "http://127.0.0.1:5173",
+        "http://127.0.0.1:3000",
+        "http://localhost:5174",
+        "http://127.0.0.1:5174",
     ]
 
     # ML model path (populated when the Random Forest is trained and serialised)
     MODEL_PATH: str = "model/phishing_model.pkl"
+    FEEDBACK_DB_PATH: str = "data/phishguard_feedback.db"
+    ADMIN_API_KEY: str = "dev-admin-key"
 
     # Request limits
     MAX_URL_LENGTH: int = 2048

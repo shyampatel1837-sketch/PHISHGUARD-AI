@@ -7,9 +7,9 @@ import { useState, useEffect } from 'react'
 import { checkHealth } from '../services/api'
 
 export function useHealthCheck() {
-  const [health, setHealth]   = useState(null)
+  const [health, setHealth] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [online, setOnline]   = useState(false)
+  const [online, setOnline] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -32,7 +32,12 @@ export function useHealthCheck() {
     }
 
     check()
-    return () => { cancelled = true }
+    const intervalId = window.setInterval(check, 10000)
+
+    return () => {
+      cancelled = true
+      window.clearInterval(intervalId)
+    }
   }, [])
 
   return { health, loading, online }

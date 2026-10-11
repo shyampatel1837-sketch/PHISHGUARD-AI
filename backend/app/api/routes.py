@@ -6,8 +6,9 @@ All routes are mounted under /api in main.py.
 
 import logging
 from datetime import datetime, timezone
+from typing import Optional
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Query, status
 from fastapi.responses import JSONResponse
 
 from app.schemas.url_schemas import (
@@ -19,7 +20,7 @@ from app.schemas.url_schemas import (
     ModelStatusResponse,
     ModelInfo,
 )
-from app.services import url_service, ml_service
+from app.services import url_service, ml_service, feedback_service
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -174,4 +175,101 @@ async def model_predict(request: AnalyzeURLRequest):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An unexpected error occurred.",
+        )
+
+
+# ── Feedback ────────────────────────────────────────────────────────────────
+
+@router.post(
+    "/feedback",
+    summary="Submit feedback for a scan result",
+    tags=["Feedback"],
+)
+async def submit_feedback(payload: dict):
+    try:
+        item = feedback_service.submit_feedback(payload)
+        return {"success": True, "data": item}
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    except Exception as exc:
+        logger.exception("Feedback submission failed: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Feedback submission failed.",
+        )
+
+
+@router.get(
+    "/feedback",
+    summary="List feedback submissions",
+    tags=["Feedback"],
+)
+async def list_feedback(
+    status: Optional[str] = Query(default=None),
+    search: Optional[str] = Query(default=None),
+):
+    try:
+        items = feedback_service.list_feedback(status=status, search=search)
+        summary = feedback_service.get_feedback_summary()
+        return {"success": True, "items": items, "summary": summary}
+    except Exception as exc:
+        logger.exception("Feedback listing failed: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Unable to load feedback records.",
+        )
+
+
+@router.post(
+    "/feedback/review",
+    summary="Review a feedback submission",
+    tags=["Feedback"],
+)
+async def review_feedback(payload: dict):
+    feedback_id = payload.get("feedback_id")
+    decision = payload.get("decision")
+    admin_key = payload.get("admin_key")
+    reviewed_by = payload.get("reviewed_by")
+    review_note = payload.get("review_note")
+
+    if not feedback_id or not decision:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="feedback_id and decision are required.",
+        )
+
+    try:
+        item = feedback_service.review_feedback(
+            str(feedback_id),
+            str(decision),
+            admin_key=admin_key,
+            reviewed_by=reviewed_by,
+            review_note=review_note,
+        )
+        return {"success": True, "data": item}
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    except Exception as exc:
+        logger.exception("Feedback review failed: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Unable to review feedback.",
+        )
+
+
+@router.get(
+    "/feedback/improvement-status",
+    summary="Get improvement pipeline status",
+    tags=["Feedback"],
+)
+async def improvement_status():
+    try:
+        return {"success": True, "data": feedback_service.get_improvement_status()}
+    except Exception as exc:
+        logger.exception("Improvement status lookup failed: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Unable to load improvement status.",
         )

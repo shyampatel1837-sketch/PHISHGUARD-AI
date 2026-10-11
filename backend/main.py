@@ -14,6 +14,7 @@ from fastapi.responses import JSONResponse
 
 from app.api.routes import router
 from app.core.config import settings
+from app.core.db import initialize_database
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 
@@ -31,6 +32,8 @@ async def lifespan(app: FastAPI):
     logger.info("PhishGuard AI backend starting up…")
     logger.info("Version : %s", settings.APP_VERSION)
     logger.info("Debug   : %s", settings.DEBUG)
+    initialize_database()
+    logger.info("Persistence store ready at %s", settings.FEEDBACK_DB_PATH)
     yield
     logger.info("PhishGuard AI backend shutting down.")
 

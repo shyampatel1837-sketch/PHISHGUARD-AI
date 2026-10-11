@@ -228,6 +228,9 @@ class AnalyzeURLResponse(BaseModel):
 
     model: ModelInfo = ModelInfo()
 
+    # Stable database scan identifier
+    scan_id: Optional[str] = None
+
     
     # Timestamp
     
