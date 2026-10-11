@@ -74,10 +74,10 @@ def analyze_url(raw_url: str) -> AnalyzeURLResponse:
       3. Run ML inference (returns None values if model is not connected).
       4. Assemble and return a structured response.
     """
-    # ── 1. Normalise ─────────────────────────────────────────────────────────
+    #  1. Normalise 
     url = _normalise_url(raw_url)
 
-    # ── 2. Validate ──────────────────────────────────────────────────────────
+    #  2. Validate ─
     valid, error_msg = _is_valid_url(url)
     if not valid:
         logger.warning("Invalid URL submitted: %s — %s", raw_url, error_msg)
@@ -90,21 +90,21 @@ def analyze_url(raw_url: str) -> AnalyzeURLResponse:
             analyzed_at=datetime.now(timezone.utc),
         )
 
-    # ── 3. Extract features ───────────────────────────────────────────────────
+    #  3. Extract features ─
     try:
         features: URLFeatures = feature_service.extract_features(url)
     except Exception as exc:
         logger.error("Feature extraction failed for '%s': %s", url, exc)
         features = URLFeatures()
 
-    # ── 4. ML Inference ──────────────────────────────────────────────────────
+    #  4. ML Inference 
     try:
-        classification, risk_score, confidence = ml_service.predict(features)
+        classification, risk_score, confidence = ml_service.predict(url)
     except Exception as exc:
         logger.error("ML prediction failed for '%s': %s", url, exc)
         classification, risk_score, confidence = None, None, None
 
-    # ── 5. Determine status ──────────────────────────────────────────────────
+    #  5. Determine status 
     if not ml_service.is_model_ready():
         status = "ml_not_connected"
         message = (

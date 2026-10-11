@@ -6,15 +6,16 @@ prediction functionality to the API layer.
 """
 
 
+import json
 import logging
 import os
 from pathlib import Path
-from typing import Optional, Dict, Any, Tuple
+from typing import Optional, Dict, Any, Tuple, Union
 
 import joblib
 import pandas as pd
 
-from app.schemas.url_schemas import ModelInfo
+from app.schemas.url_schemas import ModelInfo, URLFeatures
 from app.services.feature_service import (
     extract_features,
     build_feature_vector,
@@ -30,7 +31,42 @@ logger = logging.getLogger(__name__)
 
 _model = None
 _model_loaded = False
+_model_meta = {}
 
+
+
+def _get_model_meta_path() -> Path:
+    """Return the metadata file used to describe the current model artifact."""
+    backend_root = Path(__file__).resolve().parents[2]
+    configured_path = os.getenv("MODEL_META_PATH")
+
+    if configured_path:
+        model_meta_path = Path(configured_path)
+        if not model_meta_path.is_absolute():
+            model_meta_path = backend_root / model_meta_path
+        return model_meta_path
+
+    return backend_root / "model" / "phishing_model_meta.json"
+
+
+
+def _load_model_metadata() -> Dict[str, Any]:
+    """Load the current model metadata from disk when present."""
+    global _model_meta
+
+    meta_path = _get_model_meta_path()
+    if not meta_path.exists():
+        _model_meta = {}
+        return _model_meta
+
+    try:
+        with meta_path.open("r", encoding="utf-8") as fh:
+            _model_meta = json.load(fh)
+    except Exception as exc:
+        logger.warning("Model metadata could not be loaded from '%s': %s", meta_path, exc)
+        _model_meta = {}
+
+    return _model_meta
 
 
 # MODEL LOADING
@@ -76,11 +112,13 @@ def _load_model() -> None:
 
         _model = None
         _model_loaded = False
+        _model_meta = _load_model_metadata()
         return
 
     try:
         _model = joblib.load(model_path)
         _model_loaded = True
+        _model_meta = _load_model_metadata()
 
         logger.info(
             "Random Forest model loaded successfully "
@@ -140,51 +178,36 @@ def is_model_ready() -> bool:
 
 
 def predict(
-    url: str,
+    url_or_features: Union[str, URLFeatures],
 ) -> Tuple[
     Optional[str],
     Optional[float],
     Optional[float],
 ]:
     """
-    Run phishing inference on a URL string.
+    Run phishing inference on a URL string or a feature object.
 
-    The URL goes through the exact same feature extraction
-    pipeline used during model training.
-
-    Returns:
-
-        classification:
-            "phishing" or "legitimate"
-
-        risk_score:
-            Probability of phishing from 0.0 to 1.0
-
-        confidence:
-            Probability of the predicted class
+    The model always expects the same canonical feature vector used in training,
+    but callers may pass either the raw URL or an already-extracted URLFeatures
+    payload. This keeps the prediction API resilient while preserving the actual
+    live pipeline: the API sends the original URL string, not a serialized
+    feature object.
     """
 
     if not is_model_ready():
         return None, None, None
 
     try:
-        
-        # 1. Extract URL features
-        
-
-        features = extract_features(url)
-
-        
-        # 2. Build the exact 24-feature vector
-        
-
-        feature_vector = build_feature_vector(
-            features
-        )
-
-        
-        # 3. Safety check
-        
+        if isinstance(url_or_features, URLFeatures):
+            feature_vector = build_feature_vector(url_or_features)
+        elif isinstance(url_or_features, str):
+            features = extract_features(url_or_features)
+            feature_vector = build_feature_vector(features)
+        else:
+            raise TypeError(
+                "predict() expects a URL string or URLFeatures object, "
+                f"got {type(url_or_features).__name__}"
+            )
 
         if len(feature_vector) != len(FEATURE_NAMES):
             raise ValueError(
@@ -194,43 +217,18 @@ def predict(
                 f"were provided."
             )
 
-        
-        # 4. Create DataFrame
-        
-
         feature_df = pd.DataFrame(
             [feature_vector],
             columns=FEATURE_NAMES,
         )
 
-        
-        # 5. Get model probabilities
-        
+        probabilities = _model.predict_proba(feature_df)[0]
 
-        probabilities = _model.predict_proba(
-            feature_df
-        )[0]
+        legitimate_prob = float(probabilities[0])
+        phishing_prob = float(probabilities[1])
 
-        # Training labels:
-        #
-        # good -> 0
-        # bad  -> 1
-
-        legitimate_prob = float(
-            probabilities[0]
-        )
-
-        phishing_prob = float(
-            probabilities[1]
-        )
-
-        
-        # 6. Classification
-        # Threshold of 0.493 was selected on the domain-aware validation set
-        # to maximise F1 while reducing false positives vs 0.5 default.
-        
-
-        THRESHOLD = float(os.getenv("PREDICTION_THRESHOLD", "0.493"))
+        default_threshold = float(_model_meta.get("threshold", 0.493))
+        THRESHOLD = float(os.getenv("PREDICTION_THRESHOLD", str(default_threshold)))
 
         classification = (
             "phishing"
@@ -238,19 +236,8 @@ def predict(
             else "legitimate"
         )
 
-        
-        # 7. Confidence
-        
-
-        confidence = float(
-            max(probabilities)
-        )
-
-        return (
-            classification,
-            phishing_prob,
-            confidence,
-        )
+        confidence = float(max(probabilities))
+        return (classification, phishing_prob, confidence)
 
     except Exception as exc:
         logger.error(
@@ -268,23 +255,23 @@ def predict(
 
 def get_model_metrics() -> Optional[Dict[str, Any]]:
     """
-    Return the evaluation metrics of the current
-    24-feature Random Forest model.
-
-    Metrics come from the latest training run.
+    Return the evaluation metrics of the current model from its saved metadata.
     """
 
     if not is_model_ready():
         return None
 
+    metrics = _model_meta.get("test_metrics", {})
+    threshold = _model_meta.get("threshold", 0.493)
+
     return {
-        "accuracy": 0.9067,
-        "precision": 0.8182,
-        "recall": 0.7628,
-        "f1_score": 0.7895,
-        "feature_count": 31,
-        "threshold": 0.493,
-        "evaluation": "domain-aware split",
+        "accuracy": float(metrics.get("accuracy", 0.0)),
+        "precision": float(metrics.get("precision", 0.0)),
+        "recall": float(metrics.get("recall", 0.0)),
+        "f1_score": float(metrics.get("f1", metrics.get("f1_score", 0.0))),
+        "feature_count": int(_model_meta.get("feature_count", len(FEATURE_NAMES))),
+        "threshold": float(threshold),
+        "evaluation": "domain-aware split" if _model_meta else "unknown",
     }
 
 

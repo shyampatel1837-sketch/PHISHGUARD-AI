@@ -1,0 +1,51 @@
+{
+  "model_type": "31-feature Random Forest",
+  "feature_count": 31,
+  "feature_names": [
+    "url_length",
+    "domain_length",
+    "has_https",
+    "has_ip_address",
+    "has_at_symbol",
+    "hyphen_count",
+    "dot_count",
+    "subdomain_count",
+    "path_length",
+    "query_params",
+    "special_char_count",
+    "has_suspicious_keywords",
+    "digit_count",
+    "letter_count",
+    "digit_letter_ratio",
+    "url_entropy",
+    "domain_entropy",
+    "path_depth",
+    "query_length",
+    "double_slash_count",
+    "percent_encoding_count",
+    "has_suspicious_tld",
+    "domain_has_digits",
+    "longest_domain_label",
+    "subdomain_is_www",
+    "non_www_subdomain_depth",
+    "reg_domain_length",
+    "hostname_label_count",
+    "digit_ratio_hostname",
+    "path_domain_count",
+    "vowel_ratio_reg_domain"
+  ],
+  "threshold": 0.85,
+  "random_state": 42,
+  "n_estimators": 300,
+  "cleaning": {
+    "removed_malformed_urls": true,
+    "added_representative_legitimate_examples": true,
+    "domain_aware_split": true
+  },
+  "test_metrics": {
+    "accuracy": 1.0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0
+  }
+}
